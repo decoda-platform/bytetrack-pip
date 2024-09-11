@@ -88,6 +88,24 @@ def iou_distance(atracks, btracks):
     return cost_matrix
 
 
+def iou_or_euclidean_distance(atracks, btracks, max_dist):
+    iou_cost_matrix = iou_distance(atracks, btracks)
+
+    if len(atracks) == 0 or len(btracks) == 0:
+        return 0.5 * iou_cost_matrix
+
+    acenters = np.array([track.center for track in atracks])
+    bcenters = np.array([track.center for track in btracks])
+    dists = cdist(acenters, bcenters, metric="euclidean")
+
+    euclidean_cost_matrix = np.clip(dists / max_dist, 0.0, 1.0)
+    cost_matrix = 0.5 * iou_cost_matrix
+    non_overlaps = iou_cost_matrix == 1
+    cost_matrix[non_overlaps] += 0.5 * euclidean_cost_matrix[non_overlaps]
+
+    return cost_matrix
+
+
 def v_iou_distance(atracks, btracks):
     """
     Compute cost based on IoU

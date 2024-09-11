@@ -11,8 +11,6 @@ class TrackState(object):
 
 
 class BaseTrack(object):
-    _count = 0
-
     track_id = 0
     is_activated = False
     state = TrackState.New
@@ -22,20 +20,11 @@ class BaseTrack(object):
     curr_feature = None
     score = 0
     start_frame = 0
-    frame_id = 0
+    last_frame = 0
     time_since_update = 0
 
     # multi-camera
     location = (np.inf, np.inf)
-
-    @property
-    def end_frame(self):
-        return self.frame_id
-
-    @staticmethod
-    def next_id():
-        BaseTrack._count += 1
-        return BaseTrack._count
 
     def activate(self, *args):
         raise NotImplementedError
