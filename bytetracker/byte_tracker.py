@@ -166,10 +166,13 @@ class STrack(BaseTrack):
 class BYTETracker(object):
     def __init__(
         self,
-        track_thresh: float,
-        match_thresh: float,
         trust_time: int,
         remember_time: int,
+        track_thresh: float,
+        match_thresh_high: float,
+        match_thresh_low: float,
+        match_thresh_unconfirmed: float,
+        fuse_score: bool,
     ):
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
@@ -178,10 +181,14 @@ class BYTETracker(object):
         self.frame = 0
         self._id_counter = 0
 
-        self.track_thresh = track_thresh
-        self.match_thresh = match_thresh
-        self.remember_time = remember_time
         self.trust_time = trust_time
+        self.remember_time = remember_time
+        self.track_thresh = track_thresh
+        self.match_thresh_high = match_thresh_high
+        self.match_thresh_low = match_thresh_low
+        self.match_thresh_unconfirmed = match_thresh_unconfirmed
+        self.fuse_score = fuse_score
+
         self.kalman_filter = KalmanFilter()
 
     def next_id(self):
@@ -235,12 +242,12 @@ class BYTETracker(object):
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
         dists = matching.iou_distance(strack_pool, detections)
-        # print(f"high dists: {dists}")
-        # if not self.args.mot20:
-        # dists = matching.fuse_score(dists, detections)
+        if self.fuse_score:
+            dists = matching.fuse_score(dists, detections)
         matches, u_track, u_detection = matching.linear_assignment(
-            dists, thresh=self.match_thresh
+            dists, thresh=self.match_thresh_high
         )
+        # print(f"high dists: {dists}")
 
         for itracked, idet in matches:
             track = strack_pool[itracked]
@@ -269,7 +276,7 @@ class BYTETracker(object):
         ]
         dists = matching.iou_distance(r_tracked_stracks, detections_second)
         matches, u_track, u_detection_second = matching.linear_assignment(
-            dists, thresh=0.5   # TODO: check this
+            dists, thresh=self.match_thresh_low
         )
         # print(f"low dists: {dists}")
         for itracked, idet in matches:
@@ -291,10 +298,10 @@ class BYTETracker(object):
         """Deal with unconfirmed tracks"""
         detections = [detections[i] for i in u_detection]
         dists = matching.iou_distance(unconfirmed, detections)
-        # if not self.args.mot20:
-        # dists = matching.fuse_score(dists, detections)
+        if self.fuse_score:
+            dists = matching.fuse_score(dists, detections)
         matches, u_unconfirmed, u_detection = matching.linear_assignment(
-            dists, thresh=0.7   # TODO: check this
+            dists, thresh=self.match_thresh_unconfirmed
         )
         # print(f"unconf. dists: {dists}")
         for itracked, idet in matches:
