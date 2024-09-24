@@ -241,13 +241,14 @@ class BYTETracker(object):
         strack_pool = joint_stracks(tracked_stracks, self.lost_stracks)
         # Predict the current location with KF
         STrack.multi_predict(strack_pool)
+        # Also update the unconfirmed tracks - missing in original code!
+        STrack.multi_predict(unconfirmed)
         dists = matching.iou_distance(strack_pool, detections)
         if self.fuse_score:
             dists = matching.fuse_score(dists, detections)
         matches, u_track, u_detection = matching.linear_assignment(
             dists, thresh=self.match_thresh_high
         )
-        # print(f"high dists: {dists}")
 
         for itracked, idet in matches:
             track = strack_pool[itracked]
@@ -278,7 +279,6 @@ class BYTETracker(object):
         matches, u_track, u_detection_second = matching.linear_assignment(
             dists, thresh=self.match_thresh_low
         )
-        # print(f"low dists: {dists}")
         for itracked, idet in matches:
             track = r_tracked_stracks[itracked]
             det = detections_second[idet]
@@ -303,7 +303,6 @@ class BYTETracker(object):
         matches, u_unconfirmed, u_detection = matching.linear_assignment(
             dists, thresh=self.match_thresh_unconfirmed
         )
-        # print(f"unconf. dists: {dists}")
         for itracked, idet in matches:
             unconfirmed[itracked].update(detections[idet], self.frame)
             activated_stracks.append(unconfirmed[itracked])
@@ -340,9 +339,6 @@ class BYTETracker(object):
             self.tracked_stracks, self.lost_stracks
         )
 
-        # print(
-        #     f"{len(self.tracked_stracks)=}, {len(self.lost_stracks)=}, {len(self.removed_stracks)=}"
-        # )
         return [*self.tracked_stracks, *self.lost_stracks]
 
 
